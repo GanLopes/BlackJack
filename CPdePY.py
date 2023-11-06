@@ -5,6 +5,7 @@ import oracledb
 def separador():
     print('-' * 30)
 
+# Função para obter uma conexão com o banco de dados Oracle
 def obter_conexao():
     try:
         connection = oracledb.connect(user="RM99585", password="210305", dsn="oracle.fiap.com.br/orcl")
@@ -13,6 +14,7 @@ def obter_conexao():
         print(f"Erro ao obter conexão: {e}")
         return None
 
+# Função para fechar a conexão com o banco de dados
 def close_connection(conn, cursor):
     try:
         if conn:
@@ -22,8 +24,7 @@ def close_connection(conn, cursor):
         print(f"Erro ao fechar conexão: {e}")
 
 
-# Função para criar a tabela de jogadores (executar apenas uma vez)
-
+# Função para criar a tabela de jogadores 
 def criar_tabela_jogadores():
     conn = obter_conexao()
     cursor = conn.cursor()
@@ -53,7 +54,6 @@ def criar_tabela_jogadores():
 
 
 # Função para registrar um novo jogador
-
 def menu():
     print(''' 
 ====================================
@@ -63,51 +63,55 @@ def menu():
     opcao = int(input("Escolha uma opção:\n1 - Login\n2 - Registrar\n3 - Ranking de Jogadores\n4 - Sair\nOpção: "))
     return opcao
 
+# Função principal para jogar o jogo de Blackjack
 def jogar_blackjack():
     nome_jogador = None
     saldo_jogador = None
 
     while True:
-        opcao = menu()
-
-        if opcao == 1:
-            nome_jogador, saldo_jogador = fazer_login()
-            if nome_jogador:
-                print(f"Bem-vindo, {nome_jogador}!")
-                break
-        elif opcao == 2:
-            nome = input("Nome de usuário: ")
-            senha = input("Senha: ")
-            registrar_jogador(nome, senha)
-            print("Jogador registrado com sucesso!")
-
-        elif opcao == 3:
-            separador()
-            exibir_podio()
-            separador()
-
-        elif opcao == 4:
-         print("Já vai? Volte mais vezes!")
-         exit()
-        else:
-            print("Opção inválida. Escolha novamente.")
+        try:
+            opcao = menu()
+            
+            if opcao == 1:
+                nome_jogador, saldo_jogador = fazer_login()
+                if nome_jogador:
+                    print(f"Bem-vindo, {nome_jogador}!")
+                    break
+            elif opcao == 2:
+                nome = input("Nome de usuário: ")
+                senha = input("Senha: ")
+                registrar_jogador(nome, senha)
+                print("Jogador registrado com sucesso!")
+            elif opcao == 3:
+                separador()
+                exibir_podio()
+                separador()
+            elif opcao == 4:
+                print("Já vai? Volte mais vezes!")
+                exit()
+            else:
+                print("Opção inválida. Escolha novamente.")
+        except Exception as e:
+            print(f"Insira uma das respostas sugeridas")
 
     while True:  # Loop para permitir que o jogador continue jogando
-        jogar_rodada(nome_jogador, saldo_jogador)
-        ()
+        try:
+            jogar_rodada(nome_jogador, saldo_jogador)
+        except Exception as e:
+            print(f"Erro ao jogar a rodada: {e}")
 
         # Verifique se o jogador ainda tem saldo
         if saldo_jogador <= 0:
-            recarregar = input("Você faliu! Deseja recarregar fichas (R) ou sair (S)? ").upper()
+            recarregar = input("Você ficou sem fichas! Deseja recarregar fichas (R) ou sair (S)? ").upper()
             if recarregar == 'R':
-                saldo_jogador = 100 # Recarregue com 200 fichas (ou outro valor desejado)
+                saldo_jogador = 100  
             elif recarregar == 'S':
                 print("Já vai? Volte mais vezes!")
                 exit()
             else:
-                print("Comando invalido. Escolha R para recarregar fichas ou S para sair.")
+                print("Comando inválido. Escolha R para recarregar fichas ou S para sair.")
 
-
+# Função para registrar um novo jogador no banco de dados
 def registrar_jogador(nome, senha):
     conn = obter_conexao()
     cursor = conn.cursor()
@@ -119,8 +123,7 @@ def registrar_jogador(nome, senha):
 
     close_connection(conn, cursor)
 
-# Função para fazer login
-
+# Função para fazer login de um jogador existente
 def fazer_login():
     nome = input("Nome de usuário: ")
     senha = input("Senha: ")
@@ -128,12 +131,8 @@ def fazer_login():
     conn = obter_conexao()
     cursor = conn.cursor()
 
-    try:
-        cursor.execute('SELECT nome, saldo FROM jogadores WHERE nome = :1 AND senha = :2', (nome, senha))
-        resultado = cursor.fetchone()
-    except Exception as e:
-        print(f"Erro ao fazer login: {e}")
-        resultado = None
+    cursor.execute('SELECT nome, saldo FROM jogadores WHERE nome = :1 AND senha = :2', (nome, senha))
+    resultado = cursor.fetchone()
 
     close_connection(conn, cursor)
 
@@ -144,30 +143,34 @@ def fazer_login():
         separador()
         return None, None
 
-
-# Função para atualizar o saldo do jogador
+# Função para atualizar o saldo do jogador no banco de dados
 def atualizar_saldo(nome, novo_saldo):
     conn = obter_conexao()
     cursor = conn.cursor()
 
-    cursor.execute('UPDATE jogadores SET saldo = :novo_saldo WHERE nome = :nome', novo_saldo=novo_saldo, nome=nome)
-
-    conn.commit()
-    conn.close()
-
+    try:
+        cursor.execute('UPDATE jogadores SET saldo = :novo_saldo WHERE nome = :nome', novo_saldo=novo_saldo, nome=nome)
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Erro ao atualizar saldo")
 
 # Resto do código do jogo
+
+# Função para criar um novo baralho de cartas usando uma API
 def criar_baralho():
     response = requests.get("https://deckofcardsapi.com/api/deck/new/shuffle/?deck_count=1")
     deck_data = response.json()
     deck_id = deck_data["deck_id"]
     return deck_id
 
+# Função para sortear cartas do baralho
 def sortear_cartas(deck_id, quantidade):
     response = requests.get(f"https://deckofcardsapi.com/api/deck/{deck_id}/draw/?count={quantidade}")
     cards_data = response.json()
     return cards_data["cards"]
 
+# Função para calcular o valor total de uma mão de cartas no Blackjack
 def calcular_valor_mao(mao):
     valor = 0
     as_contagem = 0
@@ -187,23 +190,23 @@ def calcular_valor_mao(mao):
 
     return valor
 
-
+# Função para determinar o vencedor de uma rodada de Blackjack
 def determinar_vencedor(mao_jogador, mao_dealer):
     valor_jogador = calcular_valor_mao(mao_jogador)
     valor_dealer = calcular_valor_mao(mao_dealer)
 
     if valor_jogador > 21:
-        return "Maquina"  # Jogador estourou, a maquina vence
+        return "Maquina"  
     elif valor_dealer > 21:
-        return "Jogador"  # Maquina estourou, o jogador vence
+        return "Jogador"  
     elif valor_jogador > valor_dealer or valor_jogador == 21:
-        return "Jogador"  # Jogador tem maior pontuação
+        return "Jogador" 
     elif valor_dealer > valor_jogador or valor_dealer == 21:
-        return "Maquina"  # Maquina tem maior pontuação
+        return "Maquina"  
     else:
-        return "Empate"  # Empate
+        return "Empate"  
 
-
+# Função para que o jogador faça uma aposta
 def fazer_aposta(saldo):
     while True:
         try:
@@ -215,6 +218,7 @@ def fazer_aposta(saldo):
         except ValueError:
             print("Digite um valor numérico válido.")
 
+# Função para mostrar as cartas de uma mão
 def mostrar_mao(mao, jogador):
     print(f"Cartas do {jogador}:")
     for carta in mao:
@@ -229,12 +233,13 @@ def mostrar_mao(mao, jogador):
         print(f'{valor} ({carta["value"]}) de {carta["suit"]}')
     separador()
 
-
+# Função para mostrar o valor total de uma mão
 def mostrar_valor(mao, jogador):
     valor = calcular_valor_mao(mao)
     print(f"Valor da mão do {jogador}: {valor}")
     separador()
 
+# Função para o funcionamento da rodada 
 def jogar_rodada(nome_jogador, saldo_jogador):
     while saldo_jogador > 0:
         continuar_jogando = input("Iniciar rodada (S/N): ")
@@ -303,8 +308,7 @@ def jogar_rodada(nome_jogador, saldo_jogador):
         
         atualizar_saldo(nome_jogador, saldo_jogador)
 
-
-
+# Função para obter os 3 melhores jogadores (pódio) do banco de dados
 def obter_podio():
     conn = oracledb.connect(user="RM99585", password="210305", dsn="oracle.fiap.com.br/orcl")
     cursor = conn.cursor()
@@ -319,6 +323,7 @@ def obter_podio():
 
     return top_jogadores
 
+# Função para exibir o pódio dos melhores jogadores
 def exibir_podio():
     top_jogadores = obter_podio()
 
