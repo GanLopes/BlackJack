@@ -13,14 +13,13 @@ def obter_conexao():
         print(f"Erro ao obter conexão: {e}")
         return None
 
-
 def close_connection(conn, cursor):
     try:
         if conn:
             cursor.close()
             conn.close()
     except Exception as e:
-        print (f"Erro ao fechar conexão:{e}" )
+        print(f"Erro ao fechar conexão: {e}")
 
 
 # Função para criar a tabela de jogadores (executar apenas uma vez)
@@ -29,39 +28,96 @@ def criar_tabela_jogadores():
     conn = obter_conexao()
     cursor = conn.cursor()
 
-    # Consulta SQL para verificar se a tabela já existe
-    cursor.execute("SELECT count(*) FROM user_tables WHERE table_name = 'JOGADORES'")
-    tabela_existe = cursor.fetchone()
+    try:
+        # Consulta SQL para verificar se a tabela já existe
+        cursor.execute("SELECT count(*) FROM user_tables WHERE table_name = 'JOGADORES'")
+        tabela_existe = cursor.fetchone()
 
-    if not tabela_existe or tabela_existe[0] == 0:
-        cursor.execute('''
-        CREATE TABLE jogadores (
-            id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-            nome VARCHAR2(50),
-            senha VARCHAR2(50),
-            saldo NUMBER
-        )
-        ''')
-        conn.commit()
-        print("Tabela 'jogadores' criada com sucesso.")
-    else:
-        print("A tabela 'jogadores' já existe.")
-    
-    close_connection()
+        if not tabela_existe or tabela_existe[0] == 0:
+            cursor.execute('''
+            CREATE TABLE jogadores (
+                id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                nome VARCHAR2(50),
+                senha VARCHAR2(50),
+                saldo NUMBER
+            )
+            ''')
+            conn.commit()
+            print("Tabela 'jogadores' criada com sucesso.")
+        else:
+            print("A tabela 'jogadores' já existe.")
+    except Exception as e:
+        print(f"Erro ao criar tabela: {e}")
+
+    close_connection(conn, cursor)
 
 
 # Função para registrar um novo jogador
+
+def menu():
+    print(''' 
+====================================
+        BEM VINDO AO BLACK JACK
+====================================
+''')
+    opcao = int(input("Escolha uma opção:\n1 - Login\n2 - Registrar\n3 - Ranking de Jogadores\n4 - Sair\nOpção: "))
+    return opcao
+
+def jogar_blackjack():
+    nome_jogador = None
+    saldo_jogador = None
+
+    while True:
+        opcao = menu()
+
+        if opcao == 1:
+            nome_jogador, saldo_jogador = fazer_login()
+            if nome_jogador:
+                print(f"Bem-vindo, {nome_jogador}!")
+                break
+        elif opcao == 2:
+            nome = input("Nome de usuário: ")
+            senha = input("Senha: ")
+            registrar_jogador(nome, senha)
+            print("Jogador registrado com sucesso!")
+
+        elif opcao == 3:
+            separador()
+            exibir_podio()
+            separador()
+
+        elif opcao == 4:
+         print("Já vai? Volte mais vezes!")
+         exit()
+        else:
+            print("Opção inválida. Escolha novamente.")
+
+    while True:  # Loop para permitir que o jogador continue jogando
+        jogar_rodada(nome_jogador, saldo_jogador)
+        ()
+
+        # Verifique se o jogador ainda tem saldo
+        if saldo_jogador <= 0:
+            recarregar = input("Você faliu! Deseja recarregar fichas (R) ou sair (S)? ").upper()
+            if recarregar == 'R':
+                saldo_jogador = 100 # Recarregue com 200 fichas (ou outro valor desejado)
+            elif recarregar == 'S':
+                print("Já vai? Volte mais vezes!")
+                exit()
+            else:
+                print("Comando invalido. Escolha R para recarregar fichas ou S para sair.")
+
 
 def registrar_jogador(nome, senha):
     conn = obter_conexao()
     cursor = conn.cursor()
 
-    cursor.execute('INSERT INTO jogadores (nome, senha, saldo) VALUES (:1, :2, :3)', (nome, senha, 100))
+    try:
+        cursor.execute('INSERT INTO jogadores (nome, senha, saldo) VALUES (:1, :2, :3)', (nome, senha, 100))
+    except Exception as e:
+        print(f"Erro ao registrar jogador: {e}")
 
-    cursor.close()
-    conn.commit()
-    conn.close()
-
+    close_connection(conn, cursor)
 
 # Função para fazer login
 
@@ -72,10 +128,14 @@ def fazer_login():
     conn = obter_conexao()
     cursor = conn.cursor()
 
-    cursor.execute('SELECT nome, saldo FROM jogadores WHERE nome = :1 AND senha = :2', (nome, senha))
-    resultado = cursor.fetchone()
+    try:
+        cursor.execute('SELECT nome, saldo FROM jogadores WHERE nome = :1 AND senha = :2', (nome, senha))
+        resultado = cursor.fetchone()
+    except Exception as e:
+        print(f"Erro ao fazer login: {e}")
+        resultado = None
 
-    conn.close()
+    close_connection(conn, cursor)
 
     if resultado:
         return resultado[0], resultado[1]
@@ -243,58 +303,6 @@ def jogar_rodada(nome_jogador, saldo_jogador):
         
         atualizar_saldo(nome_jogador, saldo_jogador)
 
-def menu():
-    print(''' 
-====================================
-        BEM VINDO AO BLACK JACK
-====================================
-''')
-    opcao = int(input("Escolha uma opção:\n1 - Login\n2 - Registrar\n3 - Ranking de Jogadores\n4 - Sair\nOpção: "))
-    return opcao
-
-def jogar_blackjack():
-    nome_jogador = None
-    saldo_jogador = None
-
-    while True:
-        opcao = menu()
-
-        if opcao == 1:
-            nome_jogador, saldo_jogador = fazer_login()
-            if nome_jogador:
-                print(f"Bem-vindo, {nome_jogador}!")
-                break
-        elif opcao == 2:
-            nome = input("Nome de usuário: ")
-            senha = input("Senha: ")
-            registrar_jogador(nome, senha)
-            print("Jogador registrado com sucesso!")
-
-        elif opcao == 3:
-            separador()
-            exibir_podio()
-            separador()
-
-        elif opcao == 4:
-         print("Já vai? Volte mais vezes!")
-         exit()
-        else:
-            print("Opção inválida. Escolha novamente.")
-
-    while True:  # Loop para permitir que o jogador continue jogando
-        jogar_rodada(nome_jogador, saldo_jogador)
-        ()
-
-        # Verifique se o jogador ainda tem saldo
-        if saldo_jogador <= 0:
-            recarregar = input("Você faliu! Deseja recarregar fichas (R) ou sair (S)? ").upper()
-            if recarregar == 'R':
-                saldo_jogador = 100 # Recarregue com 200 fichas (ou outro valor desejado)
-            elif recarregar == 'S':
-                print("Já vai? Volte mais vezes!")
-                exit()
-            else:
-                print("Comando invalido. Escolha R para recarregar fichas ou S para sair.")
 
 
 def obter_podio():
